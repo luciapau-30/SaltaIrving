@@ -146,12 +146,12 @@ module game_sm(
 	// =====================================================================
 	// Runner physics (used on a PLAY tick)
 	// =====================================================================
-	wire               finish   = (scroll >= FINISH_SCROLL);
-	wire [3:0]         speed    = (level == 2'd3) ? 4'd6 : (level == 2'd2) ? 4'd5 : 4'd4;
-	wire               grounded = (runner_h <= support);
-	wire signed [10:0] h_air    = $signed({2'b00, runner_h}) + $signed({{5{vel[5]}}, vel});  // h + v
-	wire               lands    = (h_air <= $signed({2'b00, support}));
-	wire signed [5:0]  vel_fall = (vel <= -6'sd12) ? -6'sd12 : vel - 6'sd1;
+	wire finish = (scroll >= FINISH_SCROLL);
+	wire [3:0] speed  = (level == 2'd3) ? 4'd6 : (level == 2'd2) ? 4'd5 : 4'd4;
+	wire grounded = (runner_h <= support);
+	wire signed [10:0] h_air = $signed({2'b00, runner_h}) + $signed({{5{vel[5]}}, vel});  // h + v
+	wire lands = (h_air <= $signed({2'b00, support}));
+	wire signed [5:0] vel_fall = (vel <= -6'sd12) ? -6'sd12 : vel - 6'sd1;
 
 	// =====================================================================
 	// State machine
@@ -162,14 +162,14 @@ module game_sm(
 		end else begin
 			case (state)
 			INIT: begin
-				lives    <= 4'd9;
-				crashes  <= 14'd0;
-				level    <= 2'd1;
-				timer    <= 6'd0;
-				scroll   <= 13'd0;      // (also park the runner so MENU shows the start)
+				lives <= 4'd9;
+				crashes <= 14'd0;
+				level <= 2'd1;
+				timer <= 6'd0;
+				scroll <= 13'd0;      // (also park the runner so MENU shows the start)
 				runner_h <= 9'd0;
-				vel      <= 6'sd0;
-				state    <= MENU;
+				vel <= 6'sd0;
+				state <= MENU;
 			end
 
 			MENU: begin
@@ -192,7 +192,8 @@ module game_sm(
 				timer <= 6'd0;
 				if (btnD) begin
 					state <= PAUSE;
-				end else if (tick) begin
+				end 
+				else if (tick) begin
 					if (hit) begin
 						state <= CRASH;
 						if (crashes != 14'd9999)
@@ -206,17 +207,17 @@ module game_sm(
 						if (grounded) begin
 							if (jump) begin
 								runner_h <= support + JUMP_V;
-								vel      <= 6'sd11;           // JUMP_V - gravity
+								vel <= 6'sd11;           // JUMP_V - gravity
 							end else begin
 								runner_h <= support;
-								vel      <= 6'sd0;
+								vel <= 6'sd0;
 							end
 						end else if (lands) begin
 							runner_h <= support;
-							vel      <= 6'sd0;
+							vel <= 6'sd0;
 						end else begin
 							runner_h <= h_air[8:0];
-							vel      <= vel_fall;
+							vel <= vel_fall;
 						end
 					end
 				end
