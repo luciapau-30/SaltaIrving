@@ -2,9 +2,10 @@
 
 A Geometry Dash–style runner game in Verilog for the Digilent Nexys A7-100T. It is built on the EE354 VGA example code and uses the main state machine from the project design. The player is a square that runs on its own; you jump over spikes, onto blocks and up stairs across three levels that get faster each time.
 
-![screens](docs/screenshots.png)
-
-*Every image above was drawn by the RTL in simulation, not mocked up (see [Simulation](#simulation)).*
+- changes to be made
+- changing the graphics of the game to resemble the aesthetic of the background
+- I was to remove level 1,
+- i want to make level 2 have the following aesthetic: The city of Panama just like it is currently, and that the 
 
 ## Controls
 
