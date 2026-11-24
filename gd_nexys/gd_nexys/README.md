@@ -98,7 +98,6 @@ Messages and the font are also in `tools/gen_roms.py`.
 
 - `display_controller.v` is the example file, unchanged. It makes its 25 MHz pixel clock from flip-flops, like the class template, so Vivado may warn about it. As in the template, its hCount/vCount have no reset; they power up at 0 on the FPGA, and the testbench sets that start value itself.
 - Because `bright` comes out one pixel after `hCount`, the renderer uses x = hCount − 145. That puts pixel 0 at the left edge.
-- I could not run Vivado here. The RTL was checked with Icarus and Verilator and synthesized with Yosys for 7-series. After your first build, look at the timing summary for the 100 MHz `ClkPort` paths.
 
 ## Credits
 
