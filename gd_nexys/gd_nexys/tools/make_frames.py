@@ -37,28 +37,33 @@ def moment(level, world_x, want_air=True):
 
 def main():
     os.makedirs(OUT, exist_ok=True)
-    l1 = moment(1, 59 * 32)          # double spike
-    l2 = moment(2, 54 * 32)          # spike on top of a block run
-    l3 = moment(3, 92 * 32, False)   # tall-block stairs
-    l3b = moment(3, 140 * 32)        # spike pits between blocks
+    l1 = moment(1, 35 * 32)          # cones + first pothole
+    l1b = moment(1, 66 * 32)         # barricade run with a cone on top
+    l1c = moment(1, 84 * 32, False)  # tall barricades
+    l2 = moment(2, 31 * 32)          # steel spikes + river
+    l2b = moment(2, 60 * 32)         # crate run with spikes on top
+    l2c = moment(2, 79 * 32)         # wide river + stacked crates
     rows = [
-        # name        state     lv lives prac scroll        h      timer crashes
-        ('menu',      MENU,      1, 9, 0, 0,       0,     0, 0),
-        ('play_l1',   PLAY,      1, 9, 0, l1[0],   l1[1], 0, 0),
-        ('play_l2',   PLAY,      2, 7, 0, l2[0],   l2[1], 0, 2),
-        ('play_l3',   PLAY,      3, 5, 0, l3[0],   l3[1], 0, 4),
-        ('play_l3b',  PLAY,      3, 5, 1, l3b[0],  l3b[1], 0, 4),
-        ('pause',     PAUSE,     2, 7, 0, l2[0],   l2[1], 0, 2),
-        ('crash',     CRASH,     1, 8, 0, 624,     0,     4, 1),
-        ('game_over', GAME_OVER, 1, 0, 0, 624,     0,     59, 9),
-        ('win',       WIN,       3, 6, 0, 7168,    0,     0, 3),
-        ('menu_prac', MENU,      2, 9, 1, 0,       0,     0, 0),
+        # name        state     lv lives prac scroll        h       timer crashes
+        ('menu',      MENU,      1, 9, 0, 0,       0,      0, 0),
+        ('play_l1',   PLAY,      1, 9, 0, l1[0],   l1[1],  0, 0),
+        ('play_l1b',  PLAY,      1, 8, 0, l1b[0],  l1b[1], 0, 1),
+        ('play_l1c',  PLAY,      1, 8, 0, l1c[0],  l1c[1], 0, 1),
+        ('play_l2',   PLAY,      2, 7, 0, l2[0],   l2[1],  0, 2),
+        ('play_l2b',  PLAY,      2, 7, 0, l2b[0],  l2b[1], 0, 2),
+        ('play_l2c',  PLAY,      2, 7, 1, l2c[0],  l2c[1], 0, 2),
+        ('pause',     PAUSE,     1, 8, 0, l1b[0],  l1b[1], 0, 1),
+        ('crash',     CRASH,     1, 8, 0, 975,     0,      4, 1),
+        ('game_over', GAME_OVER, 1, 0, 0, 975,     0,      59, 9),
+        ('win',       WIN,       2, 6, 0, 7168,    0,      0, 3),
+        ('menu_l2',   MENU,      2, 9, 1, 0,       0,      0, 0),
     ]
     with open(os.path.join(OUT, 'scenarios.txt'), 'w') as f:
         for r in rows:
             f.write(' '.join(str(x) for x in r) + '\n')
     src = [os.path.join(ROOT, p) for p in
-           ('sim/tb_render.v', 'src/vga_bitchange.v', 'src/level_rom.v', 'src/text_rom.v', 'src/font_rom.v')]
+           ('sim/tb_render.v', 'src/vga_bitchange.v', 'src/level_rom.v', 'src/text_rom.v', 'src/font_rom.v',
+            'src/skyline_rom.v', 'src/jungle_rom.v', 'src/sprite_rom.v', 'src/hole_rom.v')]
     vvp = os.path.join(OUT, 'tb_render.vvp')
     subprocess.run(['iverilog', '-g2005', '-o', vvp] + src, check=True)
     subprocess.run(['vvp', '-n', vvp], check=True, cwd=ROOT)

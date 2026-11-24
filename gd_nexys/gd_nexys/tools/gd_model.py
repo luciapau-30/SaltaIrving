@@ -13,9 +13,13 @@ Coordinates
   - `h` is the height of the runner's bottom edge above the floor (pixels).
   - The world is a row of 32-px tiles, one character per tile.
 
-Tile characters
-  '.' empty        '^' floor spike        '#' block (32 tall)
-  'H' block (64)   'A' block 32 with a spike on top
+Tile characters (city look / jungle look)
+  '.' empty
+  '^' floor spike          (traffic cone / metal spike trap)
+  '#' block, 32 tall       (construction barricade / wooden crate)
+  'H' block, 64 tall       (tall barricade / two stacked crates)
+  'A' block with a spike   (barricade + cone / crate + spikes)
+  'O' hole in the floor    (pothole / river): touching it on the ground kills you
 """
 import sys
 
@@ -27,11 +31,13 @@ G = 1               # gravity (px/frame^2)
 VMAX = 12           # terminal fall speed
 SNAP = 12           # how far below a block top you can be and still land on it
 SPIKE_H = 16        # runner bottom must be >= base+SPIKE_H over a spike's core
+# holes: you die if you are ON THE FLOOR (h == 0) while your feet (runner x +8..+23)
+# overlap the hole's core (tile x 4..27)
 FINISH_SCROLL = 7168  # level is cleared once scroll reaches this (bar = scroll>>4 = 448 px)
-SPEED = {1: 4, 2: 5, 3: 6}   # px per frame for levels 1..3
+SPEED = {1: 5, 2: 6}         # px per frame: level 1 (Panama City), level 2 (jungle)
 
-EMPTY, SPIKE, B32, B64, SPB = 0, 1, 2, 3, 4
-CHAR2KIND = {'.': EMPTY, '^': SPIKE, '#': B32, 'H': B64, 'A': SPB}
+EMPTY, SPIKE, B32, B64, SPB, HOLE = 0, 1, 2, 3, 4, 5
+CHAR2KIND = {'.': EMPTY, '^': SPIKE, '#': B32, 'H': B64, 'A': SPB, 'O': HOLE}
 
 
 def _lvl(*parts):
@@ -44,52 +50,38 @@ def _lvl(*parts):
 # Keep content below tile ~222 (the finish line is at world x 7328 = tile 229).
 # ---------------------------------------------------------------------------
 LEVELS = {
-    # Level 1 - speed 4: single/double spikes, blocks, a small staircase
+    # Level 1 - Panama City, speed 5: cones, barricades, potholes
     1: _lvl(
         '.' * 24,
-        '^', '.' * 10,
-        '^', '.' * 10,
-        '#', '.' * 10,
-        '^^', '.' * 10,
-        '###', '.' * 9,
-        '^', '.' * 6, '^', '.' * 9,
-        '#H', '.' * 10,
-        '^^', '.' * 8,
-        '##..##', '.' * 9,
-        '^', '.' * 5, '^^', '.' * 9,
-        '###H###', '.' * 9,
-        '#', '.' * 6, '^', '.' * 9,
-        '^^', '.' * 7, '#', '.' * 8,
-        '^', '.' * 4, '^', '.' * 4, '^',
-    ),
-    # Level 2 - speed 5: block runs with gaps, spikes on blocks, longer chains
-    2: _lvl(
-        '.' * 24,
         '^^', '.' * 9,
+        'O', '.' * 8,
         '#.#.#', '.' * 8,
-        '^', '.' * 5, '^^', '.' * 8,
+        '^', '.' * 5, 'O', '.' * 7,
         '####A####', '.' * 8,
-        '#H', '.' * 3, 'H#', '.' * 8,
-        '^^', '.' * 7, '^^', '.' * 8,
-        '###^^###', '.' * 8,
-        '#', '.' * 5, '^', '.' * 5, '#', '.' * 8,
-        '###A####A###', '.' * 8,
-        '^^', '.' * 6, '#H', '.' * 8,
-        '^', '.' * 5, '^', '.' * 5, '^^', '.' * 6,
+        '#H', '.' * 3, 'H#', '.' * 7,
+        'OO', '.' * 7,
+        '^^', '.' * 7, '^^', '.' * 7,
+        '###^^###', '.' * 7,
+        'O', '.' * 5, '^', '.' * 5, 'O', '.' * 7,
+        '###A####A###', '.' * 7,
+        '^^', '.' * 6, '#H', '.' * 7,
+        '^', '.' * 5, 'O', '.' * 5, '^^',
     ),
-    # Level 3 - speed 6: triple spikes, tall stairs, spike-topped runs
-    3: _lvl(
-        '.' * 24,
-        '^^^', '.' * 9,
-        '#H#', '.' * 8,
-        '^^', '.' * 5, '^^^', '.' * 8,
-        '###A#####A###', '.' * 8,
-        '#H', '.' * 6, '#H', '.' * 6, '#H', '.' * 7,
-        '^^^', '.' * 7, '#', '.' * 6,
-        '###^^####^^###', '.' * 8,
-        'A', '.' * 7, 'A', '.' * 8,
-        '^^', '.' * 6, '^^', '.' * 7, '^^^', '.' * 8,
-        '###A###HH###A###', '.' * 7,
+    # Level 2 - Panama jungle, speed 6: spike traps, crates, rivers
+    2: _lvl(
+        '.' * 20,
+        '^^^', '.' * 8,
+        'O', '.' * 7,
+        '#H#', '.' * 7,
+        '^^', '.' * 5, '^^^', '.' * 7,
+        '###A#####A###', '.' * 7,
+        'OO', '.' * 6,
+        '#H', '.' * 6, '#H', '.' * 6, '#H', '.' * 6,
+        '^^^', '.' * 6, 'O', '.' * 5,
+        '###^^####^^###', '.' * 6,
+        'A', '.' * 6, 'O', '.' * 6, 'A', '.' * 6,
+        '^^', '.' * 6, 'OO', '.' * 5, '^^^', '.' * 6,
+        '###A###HH###A###', '.' * 5,
         '^^^',
     ),
 }
@@ -128,6 +120,9 @@ def sense(tiles, scroll, h):
                 base = 0 if k == SPIKE else 32
                 if h < base + SPIKE_H:
                     hit = True
+        if k == HOLE:
+            if wx0 + 8 <= t * 32 + 27 and wx0 + 23 >= t * 32 + 4 and h == 0:
+                hit = True              # stepped into the pothole / river
     return hit, support
 
 
@@ -139,17 +134,17 @@ def step(tiles, speed, scroll, h, v, jump):
     if scroll >= FINISH_SCROLL:
         return 'clear', scroll, h, v
     scroll = scroll + speed
-    if h <= support:                    # on the ground / on a block
-        if jump:
+    if h <= support:                    # on the floor / a block (or within the landing
+        if jump:                        # tolerance just below a block top: snap up)
             h, v = support + V0, V0 - G
         else:
             h, v = support, 0
     else:                               # in the air
         ht = h + v
-        if ht <= support:
+        if v <= 0 and ht <= support:    # only land while falling onto a surface
             h, v = support, 0
         else:
-            h, v = ht, max(v - G, -VMAX)
+            h, v = ht, (v - G if v > -VMAX else v)
     return 'run', scroll, h, v
 
 
@@ -251,7 +246,7 @@ def _can_win(tiles, speed, scroll, h, v, _cache={}):
 
 
 if __name__ == '__main__':
-    for lv in (1, 2, 3):
+    for lv in sorted(LEVELS):
         sched, _ = solve(lv)
         if sched is None:
             print(f'level {lv}: NOT BEATABLE')

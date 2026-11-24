@@ -4,7 +4,7 @@
 
 // Message ROM: {msg_id, char_index} -> 6-bit character code.
 // Codes: 0 space, 1-26 A-Z, 27-36 0-9, 37 - 38 / 39 ! 40 : 41 .
-//        48 level digit, 49 lives digit, 50-53 crash counter digits (placeholders)
+//        48 level digit, 49 lives digit, 50-53 jump counter digits (placeholders)
 module text_rom(
 	input  [4:0] msg,
 	input  [5:0] idx,
@@ -57,13 +57,24 @@ module text_rom(
 			{5'd5, 6'd11}: code = 6'd9;
 			{5'd5, 6'd12}: code = 6'd14;
 			{5'd5, 6'd13}: code = 6'd39;
-			// msg 6: "LEVEL #"
-			{5'd6, 6'd16}: code = 6'd12;
-			{5'd6, 6'd17}: code = 6'd5;
-			{5'd6, 6'd18}: code = 6'd22;
-			{5'd6, 6'd19}: code = 6'd5;
-			{5'd6, 6'd20}: code = 6'd12;
-			{5'd6, 6'd22}: code = 6'd48;
+			// msg 6: "LEVEL 1 - PANAMA CITY"
+			{5'd6, 6'd9}: code = 6'd12;
+			{5'd6, 6'd10}: code = 6'd5;
+			{5'd6, 6'd11}: code = 6'd22;
+			{5'd6, 6'd12}: code = 6'd5;
+			{5'd6, 6'd13}: code = 6'd12;
+			{5'd6, 6'd15}: code = 6'd28;
+			{5'd6, 6'd17}: code = 6'd37;
+			{5'd6, 6'd19}: code = 6'd16;
+			{5'd6, 6'd20}: code = 6'd1;
+			{5'd6, 6'd21}: code = 6'd14;
+			{5'd6, 6'd22}: code = 6'd1;
+			{5'd6, 6'd23}: code = 6'd13;
+			{5'd6, 6'd24}: code = 6'd1;
+			{5'd6, 6'd26}: code = 6'd3;
+			{5'd6, 6'd27}: code = 6'd9;
+			{5'd6, 6'd28}: code = 6'd20;
+			{5'd6, 6'd29}: code = 6'd25;
 			// msg 7: "PRESS BTNC TO START"
 			{5'd7, 6'd10}: code = 6'd16;
 			{5'd7, 6'd11}: code = 6'd18;
@@ -152,19 +163,17 @@ module text_rom(
 			{5'd11, 6'd23}: code = 6'd15;
 			{5'd11, 6'd24}: code = 6'd4;
 			{5'd11, 6'd25}: code = 6'd5;
-			// msg 12: "CRASHES: @@@@"
-			{5'd12, 6'd13}: code = 6'd3;
-			{5'd12, 6'd14}: code = 6'd18;
-			{5'd12, 6'd15}: code = 6'd1;
-			{5'd12, 6'd16}: code = 6'd19;
-			{5'd12, 6'd17}: code = 6'd8;
-			{5'd12, 6'd18}: code = 6'd5;
-			{5'd12, 6'd19}: code = 6'd19;
-			{5'd12, 6'd20}: code = 6'd40;
-			{5'd12, 6'd22}: code = 6'd50;
-			{5'd12, 6'd23}: code = 6'd51;
-			{5'd12, 6'd24}: code = 6'd52;
-			{5'd12, 6'd25}: code = 6'd53;
+			// msg 12: "JUMPS: @@@@"
+			{5'd12, 6'd14}: code = 6'd10;
+			{5'd12, 6'd15}: code = 6'd21;
+			{5'd12, 6'd16}: code = 6'd13;
+			{5'd12, 6'd17}: code = 6'd16;
+			{5'd12, 6'd18}: code = 6'd19;
+			{5'd12, 6'd19}: code = 6'd40;
+			{5'd12, 6'd21}: code = 6'd50;
+			{5'd12, 6'd22}: code = 6'd51;
+			{5'd12, 6'd23}: code = 6'd52;
+			{5'd12, 6'd24}: code = 6'd53;
 			// msg 13: "PRESS BTNC TO RESTART"
 			{5'd13, 6'd9}: code = 6'd16;
 			{5'd13, 6'd10}: code = 6'd18;
@@ -274,6 +283,26 @@ module text_rom(
 			{5'd18, 6'd28}: code = 6'd21;
 			{5'd18, 6'd29}: code = 6'd19;
 			{5'd18, 6'd30}: code = 6'd5;
+			// msg 19: "LEVEL 2 - PANAMA JUNGLE"
+			{5'd19, 6'd8}: code = 6'd12;
+			{5'd19, 6'd9}: code = 6'd5;
+			{5'd19, 6'd10}: code = 6'd22;
+			{5'd19, 6'd11}: code = 6'd5;
+			{5'd19, 6'd12}: code = 6'd12;
+			{5'd19, 6'd14}: code = 6'd29;
+			{5'd19, 6'd16}: code = 6'd37;
+			{5'd19, 6'd18}: code = 6'd16;
+			{5'd19, 6'd19}: code = 6'd1;
+			{5'd19, 6'd20}: code = 6'd14;
+			{5'd19, 6'd21}: code = 6'd1;
+			{5'd19, 6'd22}: code = 6'd13;
+			{5'd19, 6'd23}: code = 6'd1;
+			{5'd19, 6'd25}: code = 6'd10;
+			{5'd19, 6'd26}: code = 6'd21;
+			{5'd19, 6'd27}: code = 6'd14;
+			{5'd19, 6'd28}: code = 6'd7;
+			{5'd19, 6'd29}: code = 6'd12;
+			{5'd19, 6'd30}: code = 6'd5;
 			default: code = 6'd0;
 		endcase
 	end

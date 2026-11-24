@@ -32,7 +32,7 @@ for i, c in enumerate('0123456789'):
     CODES[c] = 27 + i
 CODES.update({'-': 37, '/': 38, '!': 39, ':': 40, '.': 41})
 # placeholders filled in by the renderer with live values
-PH_LEVEL, PH_LIVES, PH_CRASH0 = 48, 49, 50     # '#', '$', '@@@@'
+PH_LEVEL, PH_LIVES, PH_CRASH0 = 48, 49, 50     # '#', '$', '@@@@' (jump counter)
 
 FONT = {
     'A': ['.###.', '#...#', '#...#', '#####', '#...#', '#...#', '#...#'],
@@ -81,7 +81,7 @@ FONT = {
 # --------------------------------------------------------------------------
 # Messages: (id, width, text). BIG lines are 20 cells wide (32-px cells),
 # small/HUD lines are 40 cells wide (16-px cells). Text is centred.
-#   '#' = level digit, '$' = lives digit, '@@@@' = crash counter (4 digits)
+#   '#' = level digit, '$' = lives digit, '@@@@' = jump counter (4 digits)
 # --------------------------------------------------------------------------
 MSG_W_BIG, MSG_W_SMALL = 20, 40
 MESSAGES = [
@@ -90,19 +90,20 @@ MESSAGES = [
     (3,  MSG_W_BIG,   'CRASH!'),
     (4,  MSG_W_BIG,   'GAME OVER'),
     (5,  MSG_W_BIG,   'YOU WIN!'),
-    (6,  MSG_W_SMALL, 'LEVEL #'),
+    (6,  MSG_W_SMALL, 'LEVEL 1 - PANAMA CITY'),
     (7,  MSG_W_SMALL, 'PRESS BTNC TO START'),
     (8,  MSG_W_SMALL, 'PRACTICE - BTNL/BTNR PICK LEVEL'),
     (9,  MSG_W_SMALL, 'PRESS BTNC TO RESUME'),
     (10, MSG_W_SMALL, 'LIVES LEFT: $'),
     (11, MSG_W_SMALL, 'PRACTICE MODE'),
-    (12, MSG_W_SMALL, 'CRASHES: @@@@'),
+    (12, MSG_W_SMALL, 'JUMPS: @@@@'),
     (13, MSG_W_SMALL, 'PRESS BTNC TO RESTART'),
     (14, MSG_W_SMALL, 'PRESS BTNC TO PLAY AGAIN'),
     (15, MSG_W_SMALL, None),   # HUD: LEVEL n ............ LIVES n
     (16, MSG_W_SMALL, None),   # HUD: LEVEL n ............ PRACTICE
     (17, MSG_W_SMALL, 'FLIP SW1 FOR PRACTICE MODE'),
     (18, MSG_W_SMALL, 'BTNU JUMP   BTND PAUSE'),
+    (19, MSG_W_SMALL, 'LEVEL 2 - PANAMA JUNGLE'),
 ]
 
 
@@ -138,7 +139,7 @@ def gen_text_rom():
     lines = [BANNER,
              '// Message ROM: {msg_id, char_index} -> 6-bit character code.',
              '// Codes: 0 space, 1-26 A-Z, 27-36 0-9, 37 - 38 / 39 ! 40 : 41 .',
-             '//        48 level digit, 49 lives digit, 50-53 crash counter digits (placeholders)',
+             '//        48 level digit, 49 lives digit, 50-53 jump counter digits (placeholders)',
              'module text_rom(',
              '\tinput  [4:0] msg,',
              '\tinput  [5:0] idx,',
@@ -188,15 +189,15 @@ def gen_font_rom():
 def gen_level_rom():
     lines = [BANNER,
              '// Level layouts: {level, tile} -> tile kind. One tile = 32 px of world x.',
-             '//   0 empty, 1 spike, 2 block (32 tall), 3 block (64 tall), 4 block 32 + spike on top',
+             '//   0 empty, 1 spike, 2 block (32 tall), 3 block (64 tall), 4 block 32 + spike on top, 5 hole',
              'module level_rom(',
-             '\tinput  [1:0] level,     // 1..3',
+             '\tinput  [1:0] level,     // 1..2',
              '\tinput  [7:0] tile,',
              '\toutput reg [2:0] kind',
              '\t);',
              '\talways @(*) begin',
              '\t\tcase ({level, tile})']
-    for lv in (1, 2, 3):
+    for lv in sorted(m.LEVELS):
         lines.append(f'\t\t\t// level {lv}: {m.LEVELS[lv]}')
         for t, k in sorted(m.tiles_of(lv).items()):
             lines.append(f"\t\t\t{{2'd{lv}, 8'd{t}}}: kind = 3'd{k};")
@@ -215,7 +216,7 @@ def main():
             f.write(txt)
         print('wrote', os.path.relpath(path, os.path.join(HERE, '..')))
     os.makedirs(SIM, exist_ok=True)
-    for lv in (1, 2, 3):
+    for lv in sorted(m.LEVELS):
         sched, _ = m.solve(lv)
         assert sched is not None, f'level {lv} is not beatable'
         path = os.path.join(SIM, f'jumps_L{lv}.mem')
@@ -224,6 +225,36 @@ def main():
                     f'{len(sched)} ticks to clear.\n')
             f.write('\n'.join(str(j) for j in sched) + '\n')
         print(f'wrote sim/jumps_L{lv}.mem ({len(sched)} ticks)')
+    # negative test: level 1 schedule with the jump over the first hole removed
+    sched, hole_tick, _ = hole_skip_schedule(1)
+    with open(os.path.join(SIM, 'jumps_L1_hole.mem'), 'w') as f:
+        f.write(f'// level 1 with the take-off before the first hole removed: must crash in the hole '
+                f'after {hole_tick} ticks\n')
+        f.write('\n'.join(str(j) for j in sched) + '\n')
+    print(f'wrote sim/jumps_L1_hole.mem (hole crash expected after {hole_tick} ticks)')
+
+
+def hole_skip_schedule(lv):
+    """Winning schedule with the jump over the first hole deleted (and no jumps after)."""
+    sched, _ = m.solve(lv)
+    tiles, speed = m.tiles_of(lv), m.SPEED[lv]
+    first_hole = min(t for t, k in tiles.items() if k == m.HOLE)
+    s, h, v, last_takeoff = 0, 0, 0, None
+    for i, j in enumerate(sched):
+        if j and m.grounded(tiles, s, h):
+            last_takeoff = i
+        if s + m.RX + 8 >= first_hole * 32 + 4:          # feet reach the hole
+            break
+        _, s, h, v = m.step(tiles, speed, s, h, v, j)
+    new = sched[:last_takeoff] + [0] * (len(sched) - last_takeoff)
+    s, h, v = 0, 0, 0
+    for n, j in enumerate(new, 1):
+        r, s, h, v = m.step(tiles, speed, s, h, v, j)
+        if r == 'crash':
+            wx0 = s + m.RX
+            assert any(tiles.get(t) == m.HOLE for t in ((wx0 + 8) >> 5, (wx0 + 23) >> 5)), 'not a hole crash'
+            return new, n, s
+    raise AssertionError('runner did not crash')
 
 
 if __name__ == '__main__':

@@ -5,9 +5,10 @@
 //   - checks exactly one game tick per frame
 //   - presses BtnC through the real debouncer: MENU -> LOAD -> PLAY
 //   - holds BtnU and checks the runner leaves the ground
-//   - decodes the seven-segment scan: "L1 9 0000", then SW15 -> "StAtE  3"
-//   - captures one frame from the VGA pins to sim/out/vga_capture.ppm
-// The debouncer is shortened (DEBOUNCE_BITS = 4) so presses take 16 clocks.
+//   - decodes the seven-segment scan: "L1 9" + 4-digit jump counter, then SW15 -> "StAtE  3"
+//   - captures one frame from the VGA pins to vga_capture.ppm (in the sim run folder)
+// The debouncer is shortened (DEBOUNCE_BITS = 4) so presses take 16 clocks. Icarus runs
+// use sim/models/ee201_debouncer_model.v in place of the class ee201_debouncer.
 //////////////////////////////////////////////////////////////////////////////////
 module tb_top;
 	reg ClkPort = 0;
@@ -56,7 +57,7 @@ module tb_top;
 	// ---------------- VGA capture of frame number cap_frame (sampled mid-pixel)
 	integer cap_frame = 4, fo, px = 0;
 	initial begin
-		fo = $fopen("sim/out/vga_capture.ppm", "w");
+		fo = $fopen("vga_capture.ppm", "w");
 		$fwrite(fo, "P3\n640 480\n15\n");
 	end
 	always @(negedge dut.dc.clk25) begin
@@ -80,6 +81,8 @@ module tb_top;
 		endcase
 	endfunction
 	reg [8*8-1:0] ssd_text;
+	integer jv;
+	reg [7:0] d3, d2, d1, d0;
 	task read_ssd;           // one full scan of the 8 digits
 		integer k, d;
 		reg [7:0] an;
@@ -113,11 +116,17 @@ module tb_top;
 		check(hs_period == 3200, "hSync period = 800 px x 4 clocks");
 		check(vs_period == 1680000, "vSync period = 525 lines (59.5 Hz)");
 		check(ticks == frames, "one game tick per frame");
-		check(dut.sm.scroll == 4 * (ticks - 1) || dut.sm.scroll == 4 * ticks, "scroll advances 4 px per tick on level 1");
+		check(dut.sm.scroll == 5 * (ticks - 1) || dut.sm.scroll == 5 * ticks, "scroll advances 5 px per tick on level 1");
 
+		BtnU = 0;                                  // no more take-offs, so the counter holds still
+		repeat (100) @(posedge ClkPort);
+		jv = dut.sm.jumps;
+		d3 = 8'd48 + jv / 1000 % 10; d2 = 8'd48 + jv / 100 % 10;
+		d1 = 8'd48 + jv / 10 % 10;   d0 = 8'd48 + jv % 10;
 		read_ssd;
-		$display("SSD shows \"%0s\"", ssd_text);
-		check(ssd_text == "L1 90000", "SSD = L1 9 0000");
+		$display("SSD shows \"%0s\" (jump counter = %0d)", ssd_text, jv);
+		check(jv > 0, "holding BtnU counted jumps");
+		check(ssd_text == {"L1 9", d3, d2, d1, d0}, "SSD = L<level> <lives> <4-digit jump counter>");
 		Sw15 = 1;
 		read_ssd;
 		$display("SSD shows \"%0s\"", ssd_text);

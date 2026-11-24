@@ -8,21 +8,33 @@ mkdir -p sim/out
 
 echo "== regenerate ROMs + winning jump schedules"
 python3 tools/gen_roms.py
+python3 tools/gen_skyline.py
+python3 tools/gen_jungle.py
+python3 tools/gen_sprites.py
 
 if command -v verilator >/dev/null; then
   echo "== verilator lint"
-  verilator --lint-only -Wall -Wno-DECLFILENAME -Wno-UNUSEDSIGNAL -Wno-BLKSEQ --top-module vga_top src/*.v \
+  verilator --lint-only -Wall -Wno-DECLFILENAME -Wno-UNUSEDSIGNAL -Wno-BLKSEQ -Wno-WIDTHTRUNC -Wno-WIDTHEXPAND \
+    -Wno-PINCONNECTEMPTY -Wno-SYNCASYNCNET --top-module vga_top src/*.v sim/models/ee201_debouncer_model.v \
     && echo "lint clean"
 fi
 
 echo "== tb_game_sm (FSM + physics, replays a winning run of all 3 levels)"
+cp sim/jumps_L*.mem sim/out/
 iverilog -g2005 -o sim/out/tb_game_sm.vvp sim/tb_game_sm.v src/game_sm.v src/level_rom.v
-vvp -n sim/out/tb_game_sm.vvp | grep -E "PASS|FAIL|INFO"
+(cd sim/out && vvp -n tb_game_sm.vvp | grep -E "PASS|FAIL|INFO")
 python3 tools/check_trace.py
 
-echo "== tb_top (whole chip: VGA timing, debouncers, tick, SSD, VGA capture) ~1 min"
-iverilog -g2005 -o sim/out/tb_top.vvp sim/tb_top.v src/*.v
-vvp -n sim/out/tb_top.vvp | grep -E "^ok|PASS|FAIL|SSD shows"
+echo "== game_sm_tb (the group's own FSM testbench)"
+iverilog -g2005 -o sim/out/game_sm_tb.vvp sim/game_sm_tb.v src/game_sm.v src/level_rom.v
+(cd sim/out && vvp -n game_sm_tb.vvp | grep -E "TEST|PASS|FAIL")
+
+echo "== tb_top (whole chip: VGA timing, debouncers, tick, SSD, VGA capture) ~2 min"
+# use the class ee201_debouncer.v if it is in src/, otherwise the simulation stand-in
+DEB=sim/models/ee201_debouncer_model.v
+[ -f src/ee201_debouncer.v ] && DEB=
+iverilog -g2005 -o sim/out/tb_top.vvp sim/tb_top.v src/*.v $DEB
+(cd sim/out && vvp -n tb_top.vvp | grep -E "^ok|PASS|FAIL|SSD shows")
 
 echo "== render frames for every screen ~40 s"
 python3 tools/make_frames.py
